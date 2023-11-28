@@ -1,3 +1,6 @@
+import time
+import requests
+from threading import Timer
 from selenium import webdriver
 from selenium.webdriver.edge.service import Service
 from selenium.webdriver.edge.options import Options
@@ -55,24 +58,43 @@ action.drag_and_drop_by_offset(element, xoffset=x, yoffset=0).perform()
 # 获取title为“安全标识”的a标签
 element = WAIT.until(EC.presence_of_element_located((By.CLASS_NAME, "two")))
 element.click()
+#
+# # 获取学习时长span标签
+# time_span = WAIT.until(EC.presence_of_element_located((By.ID, "xuexi_online")))
+# print("学习时长：" + time_span.text)
 
-# 获取学习时长span标签
-time_span = WAIT.until(EC.presence_of_element_located((By.ID, "xuexi_online")))
-print("学习时长：" + time_span.text)
-
-WAIT2 = WebDriverWait(driver, 360)  # 等待器
-while True:
-    if time_span.text[0] >= '2':
-        print("学习时长已满足要求")
-        break
-    # 获取当前页面弹出的alert，要处理异常
-    try:
-        alert = WAIT2.until(EC.alert_is_present())
-        # 点击确定按钮
-        alert.accept()
-        print("学习时长：" + time_span.text)
-    except:
-        print("六分钟了还没弹出alert,你电网站做得太烂了,把浏览器放到前台会好点")
-
+data = {
+    "cmd": "xuexi_online",
+}
+cookies = driver.get_cookies()
+cookies_dict = {cookie['name']: cookie['value'] for cookie in cookies}
+headers = {
+    "Origin": "https://labsafetest.uestc.edu.cn",
+    "Referer": "https://labsafetest.uestc.edu.cn/redir.php?catalog_id=132&object_id=2590",
+}
 driver.quit()
-input("按任意键退出")
+
+
+def sendPost(data, cookies_dict, headers):
+    res = requests.post("https://labsafetest.uestc.edu.cn/exam_xuexi_online.php", data=data, cookies=cookies_dict,
+                        headers=headers)
+    res = res.json()
+    print("学习时长：" + res['shichang'])
+    return myTime(res['shichang']).hour
+
+
+def schedule():
+    print("")
+    res = sendPost(data, cookies_dict, headers)
+    if res >= 2:
+        print("已完成学习")
+        exit(0)
+    Timer(60, schedule).start()
+
+
+schedule()
+
+# 在控制台加一个跳动的光标，表示程序正在运行
+while True:
+    print(">", end="")
+    time.sleep(1)
